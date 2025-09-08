@@ -28,6 +28,45 @@ func CreateToken() string {
 	return tokenString
 }
 
+// Non-expiring token
+func CreatePermanentToken() string {
+	jwtKey := []byte(os.Getenv("ACCESS_TOKEN"))
+
+	claims := jwt.MapClaims{
+		"app": "my-service",
+		// no "exp" claim here
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString(jwtKey)
+	if err != nil {
+		fmt.Println("Error creating permanent token:", err)
+		return "Invalid Token"
+	}
+
+	return tokenString
+}
+
+// Expiring token (N days)
+func CreateDayExpiringToken(days int, applicationId string) string {
+	jwtKey := []byte(os.Getenv("ACCESS_TOKEN"))
+
+	claims := jwt.MapClaims{
+		"app":           "my-service",
+		"applicationId": applicationId,
+		"exp":           time.Now().Add(time.Duration(days) * 24 * time.Hour).Unix(),
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString(jwtKey)
+	if err != nil {
+		fmt.Println("Error creating expiring token:", err)
+		return "Invalid Token"
+	}
+
+	return tokenString
+}
+
 // ValidateJWT validates the JWT token and checks if it is expired.
 func ValidateJWT(tokenString string) (*jwt.Token, error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
@@ -52,7 +91,7 @@ func ValidateJWT(tokenString string) (*jwt.Token, error) {
 			return nil, fmt.Errorf("token expired at %s", expTime.Format(time.RFC3339))
 		}
 
-		fmt.Println("Token valid for user ID:", claims["id"])
+		fmt.Println("Token valid for user ID:", claims["applicationId"])
 	}
 
 	return token, nil
@@ -95,9 +134,7 @@ func JWTMiddleware() gin.HandlerFunc {
 		// Extract the claims (user info) and set it in the context
 		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 			// Set the claims in the context
-			c.Set("id", claims["id"])
-			c.Set("roleId", claims["roleId"])
-			c.Set("branchId", claims["branchId"])
+			c.Set("applicationId", claims["applicationId"])
 			c.Set("token", tokenString)
 		}
 
