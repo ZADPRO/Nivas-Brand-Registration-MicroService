@@ -5,6 +5,8 @@ import (
 	"log"
 	service "nivasBrandRegistrationBackend/Helper/MinIo"
 	routes "nivasBrandRegistrationBackend/routes/Brand"
+	brandOnBodingRoutes "nivasBrandRegistrationBackend/routes/BrandOnBoard"
+	brandDocumentRoutes "nivasBrandRegistrationBackend/routes/RegisterFormDocument"
 	"os"
 
 	"github.com/gin-contrib/cors"
@@ -45,6 +47,8 @@ func main() {
 
 	// BrandRegistration.BrandRegistrationRoutes(r)
 	routes.PendingBrandList(r)
+	brandOnBodingRoutes.BrandOnBoading(r)
+	brandDocumentRoutes.RegisterFormDocumentUploadUrl(r)
 
 	fmt.Println("✅Server is Running at Port:" + os.Getenv("PORT"))
 	r.Run("0.0.0.0:" + os.Getenv("PORT"))
