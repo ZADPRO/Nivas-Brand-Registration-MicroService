@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	service "nivasBrandRegistrationBackend/Helper/MinIo"
+	signUpRoutes "nivasBrandRegistrationBackend/routes/Authentation"
 	routes "nivasBrandRegistrationBackend/routes/Brand"
 	brandOnBodingRoutes "nivasBrandRegistrationBackend/routes/BrandOnBoard"
 	brandDocumentRoutes "nivasBrandRegistrationBackend/routes/RegisterFormDocument"
@@ -49,6 +50,7 @@ func main() {
 	routes.PendingBrandList(r)
 	brandOnBodingRoutes.BrandOnBoading(r)
 	brandDocumentRoutes.RegisterFormDocumentUploadUrl(r)
+	signUpRoutes.SignUpDataRoutes(r)
 
 	fmt.Println("✅Server is Running at Port:" + os.Getenv("PORT"))
 	r.Run("0.0.0.0:" + os.Getenv("PORT"))
