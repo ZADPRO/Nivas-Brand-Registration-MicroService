@@ -6,6 +6,7 @@ import (
 	accesstoken "nivasBrandRegistrationBackend/Helper/AccessToken"
 	hashapi "nivasBrandRegistrationBackend/Helper/HashAPI"
 	model "nivasBrandRegistrationBackend/Model/Brand"
+	"os"
 
 	// accesstoken "nivasBrandRegistrationBackend/Helper/AccessToken"
 	service "nivasBrandRegistrationBackend/Service/Brand"
@@ -15,7 +16,6 @@ import (
 
 func BrandPendingList() gin.HandlerFunc {
 	return func(c *gin.Context) {
-
 		var reqVal model.PendingBrandListReq
 		if err := c.BindJSON(&reqVal); err != nil {
 			c.JSON(http.StatusOK, gin.H{
@@ -24,19 +24,29 @@ func BrandPendingList() gin.HandlerFunc {
 			})
 			return
 		}
+
 		dbConnt, sqlDB := db.InitDB()
 		defer sqlDB.Close()
+
 		resVal := service.BrandPendingList(dbConnt, reqVal)
 		token := accesstoken.CreateToken()
+
 		response := gin.H{
 			"status":    resVal.Status,
 			"message":   resVal.Message,
 			"brandList": resVal.BrandList,
 		}
 
+		// pick specific env vars
+		envdata := gin.H{
+			"ENCRYPT_API": os.Getenv("ENCRYPT_API"),
+			// add only what you need, don’t dump secrets!
+		}
+
 		c.JSON(http.StatusOK, gin.H{
-			"data":  hashapi.Encrypt(response, true, token),
-			"token": token,
+			"data":    hashapi.Encrypt(response, true, token),
+			"token":   token,
+			"envdata": envdata,
 		})
 	}
 }
