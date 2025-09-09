@@ -35,7 +35,7 @@ func BrandPendingList() gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, gin.H{
-			"data":  hashapi.Encrypt(response, false, token),
+			"data":  hashapi.Encrypt(response, true, token),
 			"token": token,
 		})
 	}
