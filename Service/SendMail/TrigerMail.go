@@ -10,7 +10,7 @@ import (
 
 func SendMail(reqVal TrigerMailModel.SendMailRequest) TrigerMailModel.SendMailReponce {
 	log := logger.InitLogger()
-	mailId := os.Getenv("BRAND_MAILID")
+	mailId := os.Getenv("vijayloganathan2002@gmail.com")
 	subject := fmt.Sprintf(reqVal.Subject)
 	htmlContent := fmt.Sprintf(reqVal.Content)
 	mailSent := mailService.MailService(mailId, htmlContent, subject)
