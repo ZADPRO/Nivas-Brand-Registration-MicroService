@@ -8,6 +8,7 @@ import (
 	routes "nivasBrandRegistrationBackend/routes/Brand"
 	brandOnBodingRoutes "nivasBrandRegistrationBackend/routes/BrandOnBoard"
 	brandDocumentRoutes "nivasBrandRegistrationBackend/routes/RegisterFormDocument"
+	TrigerMailRoutes "nivasBrandRegistrationBackend/routes/SendMail"
 	"os"
 
 	"github.com/gin-contrib/cors"
@@ -51,6 +52,7 @@ func main() {
 	brandOnBodingRoutes.BrandOnBoading(r)
 	brandDocumentRoutes.RegisterFormDocumentUploadUrl(r)
 	signUpRoutes.SignUpDataRoutes(r)
+	TrigerMailRoutes.SendMail(r)
 
 	fmt.Println("✅Server is Running at Port:" + os.Getenv("PORT"))
 	r.Run("0.0.0.0:" + os.Getenv("PORT"))
