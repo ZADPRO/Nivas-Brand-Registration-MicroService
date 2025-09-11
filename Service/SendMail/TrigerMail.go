@@ -5,12 +5,13 @@ import (
 	logger "nivasBrandRegistrationBackend/Helper/Logger"
 	mailService "nivasBrandRegistrationBackend/Helper/MailService"
 	TrigerMailModel "nivasBrandRegistrationBackend/Model/SendMail"
+	"os"
 )
 
 func SendMail(reqVal TrigerMailModel.SendMailRequest) TrigerMailModel.SendMailReponce {
 	log := logger.InitLogger()
-	// mailId := os.Getenv("vijayloganathan2002@gmail.com")
-	mailId := "vijayloganathan2002@gmail.com"
+	mailId := os.Getenv("BRAND_MAILID")
+	// mailId := "vijayloganathan2002@gmail.com"
 	subject := fmt.Sprintf(reqVal.Subject)
 	htmlContent := fmt.Sprintf(reqVal.Content)
 	mailSent := mailService.MailService(mailId, htmlContent, subject)
