@@ -26,7 +26,7 @@ func GetBrandCurrentStatus(db *gorm.DB, reqVal brandRegistrationModel.GetBrandCu
 	fmt.Println("Db Data : ", brandDetails)
 
 	if brandDetails.ApplicationStatus == 1 {
-		err1 := db.Raw(brandRegistrationQuery.UpDateTheBrandStatus, reqVal.ApplicationId)
+		err1 := db.Raw(brandRegistrationQuery.UpDateTheBrandStatus, reqVal.ApplicationId).Error
 		if err1 != nil {
 			log.Error("Error in Updating the Brand Details " + err.Error())
 			return brandRegistrationModel.GetBrandCurrentStatusRes{
