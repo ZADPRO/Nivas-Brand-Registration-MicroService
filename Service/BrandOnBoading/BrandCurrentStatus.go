@@ -25,6 +25,17 @@ func GetBrandCurrentStatus(db *gorm.DB, reqVal brandRegistrationModel.GetBrandCu
 	}
 	fmt.Println("Db Data : ", brandDetails)
 
+	if brandDetails.ApplicationStatus == 1 {
+		err1 := db.Raw(brandRegistrationQuery.UpDateTheBrandStatus, reqVal.ApplicationId)
+		if err1 != nil {
+			log.Error("Error in Updating the Brand Details " + err.Error())
+			return brandRegistrationModel.GetBrandCurrentStatusRes{
+				Status:  false,
+				Message: "Something went wrong, Try Again",
+			}
+		}
+	}
+
 	return brandRegistrationModel.GetBrandCurrentStatusRes{
 		Status:    true,
 		Message:   "Brand registration data fetched successfully",

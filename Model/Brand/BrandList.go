@@ -145,6 +145,7 @@ type BrandStatusUpdateResFromDb struct {
 	BrandEmail    string `json:"refBrandEmail" gorm:"column:refBrandEmail"`
 	BrandName     string `json:"refBrandName" gorm:"column:refBrandName"`
 	ContactPerson string `json:"refBrandContactPerson" gorm:"refBrandContactPerson"`
+	BrandCustId   string `json:"refApplicationCustId" gorm:"refApplicationCustId"`
 }
 
 type BrandStatusUpdateRes struct {

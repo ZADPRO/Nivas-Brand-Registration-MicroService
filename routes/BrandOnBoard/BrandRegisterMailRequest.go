@@ -14,5 +14,7 @@ func BrandOnBoading(router *gin.Engine) {
 	route.GET("/getFormData", accesstoken.JWTMiddleware(), brandRegistrationController.GetBrandRegistrationData())
 	route.GET("/getRegistrationStatus", accesstoken.JWTMiddleware(), brandRegistrationController.GetBrandRegistrationStatusData())
 	route.POST("/storeData", accesstoken.JWTMiddleware(), brandRegistrationController.StoreBrandRegistrationForm())
+	route.GET("/getInviterBrandList", brandRegistrationController.InvitedBrandList())
+	route.POST("/reSendInvite", brandRegistrationController.ReSendBrandInvite())
 
 }

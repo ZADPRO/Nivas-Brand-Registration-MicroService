@@ -1,14 +1,17 @@
 package brandRegistrationService
 
 import (
+	"bytes"
 	"fmt"
 	accesstoken "nivasBrandRegistrationBackend/Helper/AccessToken"
 	getDate "nivasBrandRegistrationBackend/Helper/DateFormat"
 	logger "nivasBrandRegistrationBackend/Helper/Logger"
 	mailService "nivasBrandRegistrationBackend/Helper/MailService"
+	BrandInviteMailTemplate "nivasBrandRegistrationBackend/Helper/MailTemplate"
 	brandRegistrationModel "nivasBrandRegistrationBackend/Model/BrandOnBoading"
 	brandRegistrationQuery "nivasBrandRegistrationBackend/Query/BrandOnBoading"
 	"os"
+	"text/template"
 
 	"gorm.io/gorm"
 )
@@ -18,7 +21,6 @@ func GenerateBrandRegisterUrl(db *gorm.DB, reqVal brandRegistrationModel.BrandRe
 	webSiteUrl := os.Getenv("BRAND_REGISTRATION_URL")
 
 	var brandDetails []brandRegistrationModel.BrandMailCheckQueryResponse
-	// 1. Check if brand email already exists
 	err := db.Raw(brandRegistrationQuery.CheckBrandEmail, reqVal.MailId).
 		Scan(&brandDetails).Error
 	if err != nil {
@@ -46,7 +48,7 @@ func GenerateBrandRegisterUrl(db *gorm.DB, reqVal brandRegistrationModel.BrandRe
 	if len(brandDetails) == 0 {
 		var date = getDate.GetCurrentDate("")
 		fmt.Println(date)
-		err := db.Raw(brandRegistrationQuery.CreateNewApplication, reqVal.BrandName, reqVal.MailId, date).
+		err := db.Raw(brandRegistrationQuery.CreateNewApplication, reqVal.BrandName, reqVal.MailId, reqVal.CustomerName, date).
 			Scan(&applicationId).Error
 		if err != nil {
 			log.Error("Create New Application Insert Failed: " + err.Error())
@@ -65,30 +67,42 @@ func GenerateBrandRegisterUrl(db *gorm.DB, reqVal brandRegistrationModel.BrandRe
 	var token = accesstoken.CreateDayExpiringToken(30, applicationId.ApplicationCustId)
 
 	registrationURL := webSiteUrl + "/#token:" + token
-	subject := fmt.Sprintf("Welcome %s - Complete Your Registration", brandName)
+	subject := "Start your Journey With Us"
+	brandMobileNumber := "+91 9797 787 989"
+	brandMailId := os.Getenv("BRAND_MAILID")
 
-	htmlContent := fmt.Sprintf(`
-		<html>
-			<body style="font-family: Arial, sans-serif; line-height: 1.6;">
-				<h2>Hello %s,</h2>
-				<p>We’re excited to have <b>%s</b> on board!</p>
-				<p>Please complete your registration by clicking the link below:</p>
-				<p>
-					<a href="%s" 
-					   style="display:inline-block; padding:10px 20px; background:#4CAF50; 
-							  color:#fff; text-decoration:none; border-radius:5px;">
-						Complete Registration
-					</a>
-				</p>
-				<p>If the button doesn’t work, copy and paste this link into your browser:</p>
-				<p><a href="%s">%s</a></p>
-				<br>
-				<p>Best Regards,<br>Brand Support Team</p>
-			</body>
-		</html>
-	`, brandOwnerName, brandName, registrationURL, registrationURL, registrationURL)
+	data := struct {
+		ContactPerson   string
+		BrandName       string
+		RegistrationURL string
+		BrandMailId     string
+		BrandMobile     string
+	}{
+		ContactPerson:   brandOwnerName,
+		BrandName:       brandName,
+		RegistrationURL: registrationURL,
+		BrandMailId:     brandMailId,
+		BrandMobile:     brandMobileNumber,
+	}
 
-	fmt.Println("brandEmail : " + brandEmail)
+	tmpl, err := template.New("inviteMail").Parse(BrandInviteMailTemplate.InviteTemplate)
+	if err != nil {
+		log.Error("Error parsing email template: " + err.Error())
+		return brandRegistrationModel.BrandEmailCheckRes{
+			Status:  false,
+			Message: "Template parsing error",
+		}
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		log.Error("Error executing email template: " + err.Error())
+		return brandRegistrationModel.BrandEmailCheckRes{
+			Status:  false,
+			Message: "Template execution error",
+		}
+	}
+	htmlContent := buf.String()
 
 	// 4. Send mail
 	mailSent := mailService.MailService(reqVal.MailId, htmlContent, subject)
