@@ -1,17 +1,21 @@
 package service
 
 import (
+	"bytes"
 	"crypto/rand"
 	"fmt"
 	"math/big"
+	accesstoken "nivasBrandRegistrationBackend/Helper/AccessToken"
 	becrypt "nivasBrandRegistrationBackend/Helper/Becrypt"
 	getDate "nivasBrandRegistrationBackend/Helper/DateFormat"
 	logger "nivasBrandRegistrationBackend/Helper/Logger"
 	mailService "nivasBrandRegistrationBackend/Helper/MailService"
+	BrandInviteMailTemplate "nivasBrandRegistrationBackend/Helper/MailTemplate"
 	service "nivasBrandRegistrationBackend/Helper/MinIo"
 	model "nivasBrandRegistrationBackend/Model/Brand"
 	query "nivasBrandRegistrationBackend/Query/Brand"
 	"os"
+	"text/template"
 	"time"
 
 	"gorm.io/gorm"
@@ -275,6 +279,8 @@ func BrandStatusUpdate(db *gorm.DB, reqVal model.BrandStatusUpdateReq) model.Bra
 	log := logger.InitLogger()
 	var brandDetails model.BrandStatusUpdateResFromDb
 	date := getDate.GetCurrentDate("")
+	brandMobileNumber := "+91 9797 787 989"
+	brandMailId := os.Getenv("BRAND_MAILID")
 
 	// ✅ Brand Approved
 	if reqVal.BrandApprove {
@@ -318,45 +324,44 @@ func BrandStatusUpdate(db *gorm.DB, reqVal model.BrandStatusUpdateReq) model.Bra
 		}
 
 		// Prepare mail content
-		subject := fmt.Sprintf("Congratulations %s - Your Brand is Approved!", brandDetails.BrandName)
+		subject := "Congratulations! Your Brand is Now Officially Part of Nivas"
 		webSiteUrl := os.Getenv("BRAND_SELLER_LOGIN_URL")
-		loginURL := webSiteUrl
 
-		htmlContent := fmt.Sprintf(`
-			<html>
-				<body style="font-family: Arial, sans-serif; line-height: 1.6;">
-					<h2>Hello %s,</h2>
-					<p>We’re excited to inform you that your brand <b>%s</b> has been <span style="color:green;"><b>approved</b></span> in the Nivas portal!</p>
-					
-					<p>You can now log in using the credentials below:</p>
-					
-					<table style="border-collapse: collapse; margin: 10px 0;">
-						<tr>
-							<td style="padding: 8px; border: 1px solid #ddd;"><b>Email</b></td>
-							<td style="padding: 8px; border: 1px solid #ddd;">%s</td>
-						</tr>
-						<tr>
-							<td style="padding: 8px; border: 1px solid #ddd;"><b>Password</b></td>
-							<td style="padding: 8px; border: 1px solid #ddd;">%s</td>
-						</tr>
-					</table>
-					
-					<p>
-						<a href="%s" 
-						   style="display:inline-block; padding:10px 20px; background:#4CAF50; 
-								  color:#fff; text-decoration:none; border-radius:5px;">
-							Login to Nivas Portal
-						</a>
-					</p>
-					
-					<p>If the button doesn’t work, copy and paste this link into your browser:</p>
-					<p><a href="%s">%s</a></p>
-					
-					<br>
-					<p>Best Regards,<br>Brand Support Team</p>
-				</body>
-			</html>
-		`, brandDetails.ContactPerson, brandDetails.BrandName, brandDetails.BrandEmail, pass, loginURL, loginURL, loginURL)
+		data := struct {
+			ContactPerson string
+			BrandName     string
+			UserName      string
+			Password      string
+			WebSiteUrl    string
+			BrandMailId   string
+			BrandMobile   string
+		}{
+			ContactPerson: brandDetails.ContactPerson,
+			BrandName:     brandDetails.BrandName,
+			UserName:      brandDetails.BrandEmail,
+			Password:      pass,
+			WebSiteUrl:    webSiteUrl,
+			BrandMailId:   brandMailId,
+			BrandMobile:   brandMobileNumber,
+		}
+
+		ApproveTmpl, err := template.New("approvedMail").Parse(BrandInviteMailTemplate.BrandApproveMailTemplate)
+		if err != nil {
+			log.Error("Error parsing email template: " + err.Error())
+			return model.BrandStatusUpdateRes{
+				Status:  false,
+				Message: "Template parsing error",
+			}
+		}
+		var buf bytes.Buffer
+		if err := ApproveTmpl.Execute(&buf, data); err != nil {
+			log.Error("Error executing email template: " + err.Error())
+			return model.BrandStatusUpdateRes{
+				Status:  false,
+				Message: "Template execution error",
+			}
+		}
+		htmlContent := buf.String()
 
 		// Send mail
 		mailSent := mailService.MailService(brandDetails.BrandEmail, htmlContent, subject)
@@ -392,26 +397,64 @@ func BrandStatusUpdate(db *gorm.DB, reqVal model.BrandStatusUpdateReq) model.Bra
 			}
 		}
 
-		subject := fmt.Sprintf("Update on Your Brand Application - %s", brandDetails.BrandName)
+		webSiteUrl := os.Getenv("BRAND_REGISTRATION_URL")
+		token := accesstoken.CreateDayExpiringToken(30, brandDetails.BrandCustId)
+		registrationURL := webSiteUrl + "/#token:" + token
 
-		htmlContent := fmt.Sprintf(`
-			<html>
-				<body style="font-family: Arial, sans-serif; line-height: 1.6;">
-					<h2>Hello %s,</h2>
-					<p>We regret to inform you that your brand <b>%s</b> has been <span style="color:red;"><b>rejected</b></span> in the Nivas portal.</p>
-					
-					<p><b>Reason for Rejection:</b></p>
-					<p style="padding:10px; background:#f8d7da; border:1px solid #f5c2c7; border-radius:5px; color:#721c24;">
-						%s
-					</p>
-					
-					<p>If you believe this is a mistake or would like to reapply, please reach out to our support team for further assistance.</p>
-					
-					<br>
-					<p>Best Regards,<br>Brand Support Team</p>
-				</body>
-			</html>
-		`, brandDetails.ContactPerson, brandDetails.BrandName, reqVal.Reason)
+		subject := "Resubmission Needed to Complete Your Onboarding."
+
+		data := struct {
+			ContactPerson   string
+			BrandName       string
+			RejectionReason string
+			ResubmitURL     string
+			BrandMailId     string
+			BrandMobile     string
+		}{
+			ContactPerson:   brandDetails.ContactPerson,
+			BrandName:       brandDetails.BrandName,
+			RejectionReason: reqVal.Reason,
+			ResubmitURL:     registrationURL,
+			BrandMailId:     brandMailId,
+			BrandMobile:     brandMobileNumber,
+		}
+
+		// htmlContent := fmt.Sprintf(`
+		// 	<html>
+		// 		<body style="font-family: Arial, sans-serif; line-height: 1.6;">
+		// 			<h2>Hello %s,</h2>
+		// 			<p>We regret to inform you that your brand <b>%s</b> has been <span style="color:red;"><b>rejected</b></span> in the Nivas portal.</p>
+
+		// 			<p><b>Reason for Rejection:</b></p>
+		// 			<p style="padding:10px; background:#f8d7da; border:1px solid #f5c2c7; border-radius:5px; color:#721c24;">
+		// 				%s
+		// 			</p>
+
+		// 			<p>If you believe this is a mistake or would like to reapply, please reach out to our support team for further assistance.</p>
+
+		// 			<br>
+		// 			<p>Best Regards,<br>Brand Support Team</p>
+		// 		</body>
+		// 	</html>
+		// `, brandDetails.ContactPerson, brandDetails.BrandName, reqVal.Reason)
+
+		rejTmpl, err := template.New("rejectMail").Parse(BrandInviteMailTemplate.BrandRejectTemplate)
+		if err != nil {
+			log.Error("Error parsing email template: " + err.Error())
+			return model.BrandStatusUpdateRes{
+				Status:  false,
+				Message: "Template parsing error",
+			}
+		}
+		var buf bytes.Buffer
+		if err := rejTmpl.Execute(&buf, data); err != nil {
+			log.Error("Error executing email template: " + err.Error())
+			return model.BrandStatusUpdateRes{
+				Status:  false,
+				Message: "Template execution error",
+			}
+		}
+		htmlContent := buf.String()
 
 		mailSent := mailService.MailService(brandDetails.BrandEmail, htmlContent, subject)
 		if !mailSent {

@@ -83,7 +83,8 @@ RETURNING
   ba."refApplicationCustId",
   ba."refBrandName",
   bc."refBrandEmail",
-  bc."refBrandContactPerson";
+  bc."refBrandContactPerson",
+  ba."refApplicationCustId";
 `
 
 var UpdateBrandRejectedStatus = `UPDATE
